@@ -1,10 +1,13 @@
+pub extern crate bincode;
+pub extern crate mpi;
+
 #[macro_export]
 macro_rules! distribute {
     (|| $setup:expr, 
         |$x:ident: $in_type:ty| $computation:expr, 
         |$xs:ident: Vec<$out_type:ty>| $finalize:expr
     ) => {
-        use mpi::traits::*;
+        use $crate::mpi::traits::*;
 
         let universe = mpi::initialize().unwrap();
         let world = universe.world();
@@ -53,7 +56,7 @@ macro_rules! distribute {
             for i in 1..size {
                 let (serialized_bytes, _status) = world.process_at_rank(i).receive_vec::<u8>();
                 let mut received_results: Vec<$out_type> =
-                    bincode::deserialize(&serialized_bytes)
+                    $crate::bincode::deserialize(&serialized_bytes)
                         .expect("Deserialization failed");
                 $xs.append(&mut received_results);
             }
@@ -61,7 +64,7 @@ macro_rules! distribute {
             $finalize
         } else {
             // For non-root processes, serialize the local results and send them to rank 0.
-            let serialized = bincode::serialize(&local_results)
+            let serialized = $crate::bincode::serialize(&local_results)
                 .expect("Serialization failed");
             world.process_at_rank(0).send(&serialized);
         }
